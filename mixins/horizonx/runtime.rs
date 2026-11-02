@@ -7,7 +7,7 @@ use std::cell::RefCell;
 
 pub const ID: &str = "horizonx";
 pub const NAME: &str = "HorizonX";
-pub const VERSION: &str = "0.3.1";
+pub const VERSION: &str = "0.3.2";
 pub const DESCRIPTION: &str =
     "HorizonX: KillAura, Freecam, Flight, Xray, ESP e muito mais. Shift direito abre o menu, ponto para comandos. Baseado no Meteor Client.";
 /// A tecla que abre o menu de módulos.
@@ -543,6 +543,8 @@ pub struct Run {
     pub eat_prev: usize,
     /// AutoTool: slot de antes, para voltar quando terminar de quebrar.
     pub tool_prev: Option<usize>,
+    /// .tp em andamento: o destino que o jogador está sendo levado.
+    pub tp_target: Option<[f64; 3]>,
 }
 
 thread_local! {
@@ -818,6 +820,19 @@ pub enum Action {
     Seed(Option<String>),
     /// `.nick <nome>`; None volta ao nome da conta.
     Nick(Option<String>),
+    /// `.tp x y z` ou `.tp x z` (os tokens do jeito que foram digitados; `~` é relativo).
+    Tp(Vec<String>),
+}
+
+/// Resolve um token de coordenada do `.tp` com a posição atual (`~` = atual, `~5` = atual+5).
+pub fn resolve_coord(token: &str, current: f64) -> Option<f64> {
+    let t = token.trim();
+    if let Some(rest) = t.strip_prefix('~') {
+        let d = if rest.is_empty() { 0.0 } else { rest.replace(',', ".").parse::<f64>().ok()? };
+        Some(current + d)
+    } else {
+        t.replace(',', ".").parse::<f64>().ok().filter(|v| v.is_finite())
+    }
 }
 
 /// O resultado de um comando: o que guardar, as linhas do chat e o que a ponte faz.
@@ -846,7 +861,7 @@ pub fn command(args: &str) -> Reply {
             r.chat.push(format!("{NAME} {VERSION}. Comandos:"));
             r.chat.push(".lista  .<módulo>  .<módulo> ajustes  .<módulo> <ajuste> <valor>".into());
             r.chat.push(".bind <módulo> <tecla>  .amigo <nome>  .nick <nome>".into());
-            r.chat.push(".seed <número>  .locate <vila, fortaleza, cidade antiga, ...>".into());
+            r.chat.push(".seed <número>  .locate <vila, cidade antiga, ...>  .tp x y z".into());
             r.chat.push("O menu abre no Shift direito.".into());
         }
         ["lista"] => {
@@ -893,6 +908,10 @@ pub fn command(args: &str) -> Reply {
         ["locate", rest @ ..] => r.action = Some(Action::Locate(rest.join(" "))),
         ["nick"] => r.action = Some(Action::Nick(None)),
         ["nick", name] => r.action = Some(Action::Nick(Some((*name).to_owned()))),
+        ["tp", coords @ ..] if coords.len() == 2 || coords.len() == 3 => {
+            r.action = Some(Action::Tp(coords.iter().map(|s| (*s).to_owned()).collect()));
+        }
+        ["tp", ..] => r.chat.push("Use .tp x y z (ou .tp x z). ~ é relativo: .tp ~ ~10 ~".into()),
         [name] => match find_module(name) {
             Some(i) => {
                 let (store, line) = toggle(i);
@@ -1843,6 +1862,13 @@ mod tests {
         assert_eq!(command("locate vila").action, Some(Action::Locate("vila".into())));
         assert_eq!(command("seed 123").action, Some(Action::Seed(Some("123".into()))));
         assert_eq!(command("nick Steve").action, Some(Action::Nick(Some("Steve".into()))));
+        assert_eq!(command("tp 100 64 -200").action, Some(Action::Tp(vec!["100".into(), "64".into(), "-200".into()])));
+        assert_eq!(command("tp 10 20").action, Some(Action::Tp(vec!["10".into(), "20".into()])));
+        assert!(command("tp 1").action.is_none(), "poucos argumentos");
+        assert_eq!(resolve_coord("~", 50.0), Some(50.0));
+        assert_eq!(resolve_coord("~10", 50.0), Some(60.0));
+        assert_eq!(resolve_coord("-200", 0.0), Some(-200.0));
+        assert_eq!(resolve_coord("abc", 0.0), None);
     }
 
     #[test]

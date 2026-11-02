@@ -1,6 +1,6 @@
 [mod]
 id = "horizonx"
-version = "0.3.1"
+version = "0.3.2"
 priority = 100
 
 # O Nightly em que foi testado. Usa os pontos de gancho do Horizon e alguns campos internos do

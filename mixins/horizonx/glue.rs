@@ -103,6 +103,11 @@ pub(super) fn tick(game: &mut Game<'_>) {
         r.ticks
     });
 
+    // .tp em andamento: leva o jogador até o destino e não faz mais nada neste tick.
+    if teleport_step(game) {
+        return;
+    }
+
     // Timer: o relógio anda mais rápido; ao desligar volta aos 20 ticks por segundo.
     let timer = m::is_on("timer");
     shared::set_timer(timer);
@@ -701,6 +706,7 @@ fn run_command(game: &mut Game<'_>, args: &str) {
         Some(m::Action::Locate(what)) => locate(game, &what),
         Some(m::Action::Seed(text)) => seed(game, text),
         Some(m::Action::Nick(name)) => nick(game, name),
+        Some(m::Action::Tp(coords)) => teleport(game, &coords),
         None => {}
     }
 }
@@ -1306,4 +1312,80 @@ fn scaffold(game: &mut Game<'_>) {
         sequence: seq,
     }));
     game.swing_arm();
+}
+
+// ----- .tp (teletransporte) ---------------------------------------------------------------
+
+/// Começa um .tp: resolve as coordenadas (com `~` relativo) e guarda o destino.
+fn teleport(game: &mut Game<'_>, coords: &[String]) {
+    let Some(p) = game.player.as_ref() else {
+        game.native_chat("Entre num mundo para usar o .tp");
+        return;
+    };
+    let cur = [p.position.x, p.position.y, p.position.z];
+    let target = if coords.len() == 2 {
+        match (m::resolve_coord(&coords[0], cur[0]), m::resolve_coord(&coords[1], cur[2])) {
+            (Some(x), Some(z)) => Some([x, cur[1], z]),
+            _ => None,
+        }
+    } else {
+        match (
+            m::resolve_coord(&coords[0], cur[0]),
+            m::resolve_coord(&coords[1], cur[1]),
+            m::resolve_coord(&coords[2], cur[2]),
+        ) {
+            (Some(x), Some(y), Some(z)) => Some([x, y, z]),
+            _ => None,
+        }
+    };
+    match target {
+        Some(t) => {
+            m::run(|r| r.tp_target = Some(t));
+            game.native_chat(&format!("Indo para {:.0} {:.0} {:.0}", t[0], t[1], t[2]));
+        }
+        None => game.native_chat("Coordenadas inválidas. Use .tp x y z (ou ~ relativo)"),
+    }
+}
+
+/// Um tick do .tp: leva o jogador até o destino a 8 blocos por tick (rápido mas dentro do que o
+/// servidor aceita, para não ser puxado de volta). Devolve true enquanto o teleporte corre.
+fn teleport_step(game: &mut Game<'_>) -> bool {
+    let Some(target) = m::run(|r| r.tp_target) else { return false };
+    if !game.native_playing() {
+        return false;
+    }
+    let arrived = {
+        let Some(p) = game.player.as_mut() else {
+            m::run(|r| r.tp_target = None);
+            return false;
+        };
+        let (dx, dy, dz) = (target[0] - p.position.x, target[1] - p.position.y, target[2] - p.position.z);
+        let dist = (dx * dx + dy * dy + dz * dz).sqrt();
+        p.velocity = Vec3::new(0.0, 0.0, 0.0);
+        p.fall_distance = 0.0;
+        const STEP: f64 = 8.0;
+        if dist <= STEP {
+            p.position = Vec3::new(target[0], target[1], target[2]);
+            true
+        } else {
+            let k = STEP / dist;
+            p.position = Vec3::new(p.position.x + dx * k, p.position.y + dy * k, p.position.z + dz * k);
+            false
+        }
+    };
+    for key in [
+        KeyCode::KeyW,
+        KeyCode::KeyS,
+        KeyCode::KeyA,
+        KeyCode::KeyD,
+        KeyCode::Space,
+        KeyCode::ShiftLeft,
+    ] {
+        game.keys.remove(&key);
+    }
+    if arrived {
+        m::run(|r| r.tp_target = None);
+        game.native_chat("Chegou.");
+    }
+    true
 }
