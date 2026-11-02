@@ -6,16 +6,29 @@ reescrito em Rust), como **mod nativo** em Rust. Baseado no [Meteor Client](http
 Não é oficial do Horizon nem do Meteor. Como usa código do Meteor (GPL-3.0), este mod também é
 GPL-3.0 (veja `LICENSE`).
 
-## Instalar ou atualizar
+## Instalar
 
-No PowerShell, com o launcher do Horizon na pasta Downloads:
+**Pelo launcher (recomendado):** na página **Mods > Adicionar do GitHub**, ou no PowerShell:
 
 ```powershell
-& "C:\Users\kaleb\Downloads\horizon-launcher.exe" native-build "C:\Users\kaleb\OneDrive\Desktop\Claude\MeteorHorizon\mixins\horizonx" --trust-native-code
+& "<caminho>\horizon-launcher.exe" mods add-github https://github.com/ServerDeadd/HorizonX --trust-native-code
 ```
 
-Testado no Nightly `c9d474dd` (01/11/2026). Usa funções internas do jogo, então um Nightly bem mais
-novo pode pedir ajuste.
+O launcher baixa, confere e compila (a primeira vez baixa o Rust e demora de 20 a 30 minutos).
+Para atualizar depois: `mods update-github`.
+
+**A partir da pasta** (se você clonou o repositório):
+
+```powershell
+& "<caminho>\horizon-launcher.exe" native-build "<pasta>\HorizonX\mixins\horizonx" --trust-native-code
+```
+
+Testado no Nightly `c9d474dd` (01/11/2026). Usa funções internas do jogo, então o ideal é estar no
+mesmo Nightly; um bem mais novo pode pedir ajuste (ou `--allow-version-mismatch`).
+
+> Mod nativo roda com acesso total ao computador (não é isolado). Por isso o `--trust-native-code`.
+> O código é aberto: leia antes de confiar. É um client de hack; em servidor normal com anticheat
+> você leva ban.
 
 ## Usar
 
