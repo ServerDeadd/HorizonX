@@ -1,0 +1,11 @@
+[package]
+name = "horizon-mod-horizonx"
+version = "0.3.1"
+edition = "2024"
+license = "GPL-3.0-only"
+publish = false
+description = "HorizonX: client de utilidades para o Horizon, baseado no Meteor Client."
+
+# A lógica do mod e os testes: o mesmo arquivo que o pacote coloca dentro do jogo.
+[lib]
+path = "mixins/horizonx/runtime.rs"

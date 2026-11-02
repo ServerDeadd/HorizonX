@@ -1,0 +1,358 @@
+[mod]
+id = "horizonx"
+version = "0.3.1"
+priority = 100
+
+# O Nightly em que foi testado. Usa os pontos de gancho do Horizon e alguns campos internos do
+# jogador, por isso fica preso a esse commit.
+[compatibility]
+horizon_revision = "c9d474dd9116e84c243f8992d75c11314df56f06"
+
+# A lógica do mod vira crate::game::horizonx dentro do jogo.
+[[module]]
+id = "runtime"
+file = "crates/horizon-client/src/game.rs"
+name = "horizonx"
+source = "runtime.rs"
+
+[[injection]]
+id = "list"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_mods"
+helper = "list.rs"
+bindings = [
+  { name = "mods", ty = "&mut Vec<crate::game::native_hooks::NativeMod>", value = "&mut *mods" },
+]
+
+[[injection]]
+id = "settings"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_settings"
+helper = "settings.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "mod_id", ty = "&str", value = "mod_id" },
+  { name = "buttons", ty = "&mut Vec<String>", value = "&mut *buttons" },
+]
+
+[[injection]]
+id = "click"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_settings_click"
+helper = "click.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "mod_id", ty = "&str", value = "mod_id" },
+  { name = "button", ty = "usize", value = "button" },
+]
+
+[[injection]]
+id = "command"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_command"
+helper = "command.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "command", ty = "&str", value = "command" },
+  { name = "ran", ty = "&mut bool", value = "&mut *ran" },
+]
+
+[[injection]]
+id = "commands"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_commands"
+helper = "commands.rs"
+bindings = [
+  { name = "commands", ty = "&mut Vec<&'static str>", value = "&mut *commands" },
+]
+
+[[injection]]
+id = "hud"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_hud"
+helper = "hud.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
+  { name = "corners", ty = "&mut horizon_client::extras_hud::Corners", value = "&mut *corners" },
+]
+
+# A ponte com o jogo (glue.rs) vira crate::game::horizonx_glue.
+[[module]]
+id = "glue"
+file = "crates/horizon-client/src/game.rs"
+name = "horizonx_glue"
+source = "glue.rs"
+
+[[injection]]
+id = "tick"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_tick"
+helper = "tick.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+]
+
+[[injection]]
+id = "frame"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_frame"
+helper = "frame.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "elapsed", ty = "std::time::Duration", value = "elapsed" },
+]
+
+[[injection]]
+id = "key"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_key"
+helper = "key.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "key", ty = "&str", value = "key" },
+  { name = "pressed", ty = "bool", value = "pressed" },
+]
+
+[[injection]]
+id = "fog"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_render_fog"
+helper = "fog.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "self" },
+  { name = "fog", ty = "&mut horizon_client::fog::FogData", value = "&mut *fog" },
+]
+
+[[injection]]
+id = "gui_draw"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_screen_render_post"
+helper = "gui_draw.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "self" },
+  { name = "batch", ty = "&mut horizon_client::hud::HudBatch", value = "&mut *batch" },
+  { name = "screen", ty = "&crate::game::native_hooks::NativeScreenView<'_>", value = "screen" },
+]
+
+[[injection]]
+id = "gui_click"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_screen_mouse_button_pressed_pre"
+helper = "gui_click.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "self" },
+  { name = "screen", ty = "&crate::game::native_hooks::NativeScreenView<'_>", value = "screen" },
+  { name = "button", ty = "i32", value = "button" },
+  { name = "canceled", ty = "&mut bool", value = "&mut *canceled" },
+]
+
+# Fora dos pontos de gancho: funções internas do jogo, por isso o commit fixo lá em cima.
+
+# As linhas do F3+B começam aqui (structure_blocks.rs): o ESP e os Tracers entram junto.
+[[injection]]
+id = "gizmos"
+kind = "HEAD"
+target = "horizon_client::game::structure_blocks::Game<'_>::bounding_box_gizmos"
+helper = "gizmos.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "self" },
+  { name = "camera", ty = "[f64; 3]", value = "camera" },
+  { name = "g", ty = "&mut horizon_client::gizmos::Gizmos", value = "&mut *g" },
+]
+
+[[injection]]
+id = "outline"
+kind = "RETURN"
+target = "horizon_client::game::glowing::Game<'_>::mob_outline"
+helper = "outline.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "self" },
+  { name = "mob", ty = "&horizon_client::mobs::Mob", value = "m" },
+  { name = "value", ty = "Option<u32>", value = "$value" },
+]
+
+[[injection]]
+id = "quads"
+kind = "HEAD"
+cancellable = true
+target = "horizon_client::game::render_tick::Game<'_>::screen_quads"
+helper = "quads.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "self" },
+]
+
+[[injection]]
+id = "nofall"
+kind = "MODIFY_EXPRESSION_VALUE"
+target = "horizon_client::game::remote::Game<'_>::remote_send_state"
+selector = "p.ground.on_ground"
+require = 1
+ordinal = 0
+helper = "nofall.rs"
+bindings = [{ name = "value", ty = "bool", value = "$value" }]
+
+# Interruptores que outros crates do jogo precisam ver (Xray, Timer, nick): no horizon-world.
+[[module]]
+id = "shared"
+file = "crates/horizon-world/src/lib.rs"
+name = "horizonx_shared"
+source = "shared_world.rs"
+visibility = "pub"
+
+# O NoSlow mora no horizon-client-input, que não depende de nada.
+[[module]]
+id = "noslow_input"
+file = "crates/horizon-client-input/src/lib.rs"
+name = "horizonx_noslow"
+source = "noslow_input.rs"
+visibility = "pub"
+
+[[injection]]
+id = "xray_face"
+kind = "HEAD"
+cancellable = true
+target = "horizon_world::block_render::FaceVisibility::should_render_face"
+helper = "xray_face.rs"
+bindings = [
+  { name = "state", ty = "BlockStateId", value = "state" },
+  { name = "neighbor", ty = "BlockStateId", value = "neighbor" },
+]
+
+# O chat: linhas que começam com ponto são comandos do Meteor.
+[[injection]]
+id = "chat"
+kind = "HEAD"
+cancellable = true
+target = "horizon_client::game::chat::Game<'_>::handle_chat_input"
+helper = "chat.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "message", ty = "&str", value = "message" },
+]
+
+[[injection]]
+id = "gui_key"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_screen_key_pressed_pre"
+helper = "gui_key.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "self" },
+  { name = "screen", ty = "&crate::game::native_hooks::NativeScreenView<'_>", value = "screen" },
+  { name = "key", ty = "&str", value = "key" },
+  { name = "canceled", ty = "&mut bool", value = "&mut *canceled" },
+]
+
+[[injection]]
+id = "velocity"
+kind = "HEAD"
+cancellable = true
+target = "horizon_client::game::remote::Game<'_>::handle_packet"
+helper = "velocity.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "packet", ty = "&C", value = "&packet" },
+]
+
+[[injection]]
+id = "reach"
+kind = "HEAD"
+cancellable = true
+target = "horizon_client::game::hand::Game<'_>::interaction_range"
+helper = "reach.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+]
+
+[[injection]]
+id = "fastbreak"
+kind = "HEAD"
+target = "horizon_client::game::remote::Game<'_>::remote_mining"
+helper = "fastbreak.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+]
+
+[[injection]]
+id = "antihunger"
+kind = "MODIFY_EXPRESSION_VALUE"
+target = "horizon_client::game::remote::Game<'_>::remote_send_state"
+selector = "p.sprinting"
+require = 1
+ordinal = 0
+helper = "antihunger.rs"
+bindings = [{ name = "value", ty = "bool", value = "$value" }]
+
+[[injection]]
+id = "timer"
+kind = "HEAD"
+target = "horizon_client::clock::FixedStep::advance"
+helper = "timer.rs"
+bindings = [{ name = "step", ty = "&mut FixedStep", value = "&mut *self" }]
+
+[[injection]]
+id = "auth"
+kind = "RETURN"
+target = "horizon_client_render::auth::current"
+helper = "auth.rs"
+bindings = [{ name = "value", ty = "Option<Arc<AuthSession>>", value = "$value" }]
+
+[[injection]]
+id = "noslow"
+kind = "HEAD"
+cancellable = true
+target = "horizon_client_input::input::modify_input"
+helper = "noslow.rs"
+bindings = [
+  { name = "input", ty = "[f32; 2]", value = "input" },
+  { name = "item_use", ty = "Option<f32>", value = "item_use" },
+  { name = "sneaking", ty = "Option<f32>", value = "sneaking" },
+]
+
+# StaffViewer: dentro de game::remote para ler a lista de jogadores do servidor.
+[[module]]
+id = "staff"
+file = "crates/horizon-client/src/game/remote.rs"
+name = "horizonx_staff"
+source = "staff.rs"
+
+# Freecam: a câmera solta (perspective::camera_view), o giro (turn_player) e o congelamento
+# do personagem (tick_remote_level).
+[[injection]]
+id = "camera"
+kind = "HEAD"
+cancellable = true
+target = "horizon_client::game::perspective::Game<'_>::camera_view"
+helper = "camera.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "_partial", ty = "f32", value = "partial" },
+]
+
+[[injection]]
+id = "turn"
+kind = "HEAD"
+cancellable = true
+target = "horizon_client::game::perspective::Game<'_>::turn_player"
+helper = "turn.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "xo", ty = "f64", value = "xo" },
+  { name = "yo", ty = "f64", value = "yo" },
+]
+
+[[injection]]
+id = "freeze"
+kind = "HEAD"
+target = "horizon_client::game::remote::Game<'_>::tick_remote_level"
+helper = "freeze.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+]
+
+# Sequência de pacote para o Nuker e o Scaffold, dentro de game::remote.
+[[module]]
+id = "nextseq"
+file = "crates/horizon-client/src/game/remote.rs"
+name = "horizonx_remote"
+source = "nextseq.rs"
